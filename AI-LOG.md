@@ -198,6 +198,9 @@ Errores detectados durante el análisis, diseño e implementación de Fases 1 y 
 - En Fase 4: la IA propuso `gemini-1.5-flash` como modelo de Gemini (especificado en el plan de implementación), pero actualizó silenciosamente a `gemini-2.0-flash` durante la generación del código sin mencionarlo. No es un error funcional, pero genera inconsistencia entre la documentación de diseño y el código. Se aceptó la actualización, pero se documentó la discrepancia.
 - En Fase 4: la IA generó mensajes de error distintos por tipo de excepción en `callGemini` (`"Timeout"`, `"HTTP error"`, `"Parse error"`). Exponer el tipo de fallo al cliente puede revelar información sobre la infraestructura. Se unificó el mensaje en una cadena genérica; los detalles se propagan en el `cause` de `AiServiceException` para los logs del servidor.
 - En Fase 4: el parseo de `end != -1` en la extracción defensiva del array JSON no cubría el caso de `end <= start` (caracteres invertidos). Se añadió la condición `end <= start` para manejar JSON malformado con orden incorrecto de corchetes.
+- En Fase 5: `GlobalExceptionHandler` usaba `"DUPLICATE_PLAYLIST"` como código de error para `DuplicatePlaylistException`, pero el contrato documentado en `DESIGN.md` especifica `"DUPLICATE_RESOURCE"`. La IA generó el handler sin cruzar la documentación. Corregido en la revisión final.
+- En Fase 6: `axios.js` importaba el router directamente, creando una dependencia circular. Vite la resuelve pero con warning en hot-reload. Se corrigió con importación lazy dinámica solo en el interceptor de 401.
+- En Fase 6: el formulario de canciones quedaba bloqueado cuando `GET /spotify/genres` devolvía 503. La IA no contempló ese estado. Se añadió un campo de texto libre como fallback cuando Spotify no está disponible.
 
 **¿Qué parte del trabajo NO delegarías a la IA y por qué?**
 
@@ -209,11 +212,9 @@ Y todo lo que requiere ejecución real para verificarse. El hash BCrypt es el ej
 
 En general: la IA me ahorró tiempo en el boilerplate y fue útil para revisar mi código desde otro ángulo. Pero el criterio, el contexto y la responsabilidad del resultado final son siempre del desarrollador.
 
-**Autoría:** indica de forma general qué porcentaje/partes fueron asistidas por IA vs. escritas a mano.
+**Autoría:** Usé la IA para generar el código inicial de cada componente a partir de prompts bien estructurados. Mi aporte fue definir la arquitectura antes de escribir una sola línea, revisar todo lo generado con criterio técnico, detectar lo que no funcionaba en la práctica, y tomar las decisiones de diseño que no están en el código pero sí en cómo está organizado el sistema. Los prompts que usé se incluyen a continuación.
 
-Hasta Fase 1 (análisis, diseño, planificación e implementación de fundaciones):
-
-**Prompts utilizados en diseño e implementación:**
+**Prompts utilizados:**
 
 *Levantamiento de requisitos:*
 > "Antes de comenzar a desarrollar quiero entender completamente el problema. Revisa toda la documentación del proyecto y haz un levantamiento de requisitos. Identifica: objetivo del sistema, funcionalidades requeridas, entidades del dominio, endpoints esperados, integraciones externas, reglas de negocio, requisitos de seguridad, restricciones técnicas, ambigüedades o información faltante. Separa claramente lo que es un requisito explícito de lo que son inferencias o supuestos."
@@ -276,7 +277,9 @@ songRepository.delete(song); // ← Hibernate reinserta el song porque el parent
 // Corrección aplicada (usa orphanRemoval correctamente):
 playList.getSongs().remove(song);
 playListRepository.save(playList); // ← orphanRemoval=true emite DELETE en flush
-``` — construcción del token y validación (fragmento clave):
+```
+
+`JwtService` — construcción del token y validación (fragmento clave):
 ```java
 public String generateToken(UserDetails userDetails) {
     return Jwts.builder()
@@ -341,21 +344,4 @@ public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundExcept
 }
 ```
 
-*Revisión técnica Fase 2 (antes de comenzar Fase 3):*
-> "Antes de comenzar la Fase 3, realiza una revisión técnica de todo lo implementado en la Fase 2. Verifica que la autenticación JWT, la configuración de Spring Security, el manejo de excepciones, los DTOs, la configuración de caché y la preparación para las integraciones externas sean consistentes con el diseño técnico y el plan de implementación."
 
-**Distribución de autoría:**
-
-- **Análisis de requisitos:** ~70% IA (borrador y clasificación inicial), ~30% desarrollador (revisión crítica, correcciones, decisiones de alcance).
-- **Documento de diseño (DESIGN.md):** ~75% IA (generación de texto, estructura, diagramas), ~25% desarrollador (correcciones de fondo: renombres de clases, eliminación del prompt literal, adición de `ErrorResponse`, nota de `@Cacheable`).
-- **Plan de implementación (IMPLEMENTATION_PLAN.md):** ~90% IA, ~10% desarrollador (rechazo de fusión Song/PlayList, revisión de validaciones).
-- **Código Fase 1** (`pom.xml`, `application.yml`, `schema.sql`, `data.sql`, entidades, repositorios): ~80% IA, ~20% desarrollador (correcciones de `ddl-auto`, hash BCrypt real, `@EnableCaching`, `INSERT` condicional).
-- **Código Fase 2** (`JwtService`, `JwtAuthFilter`, `UserDetailsServiceImpl`, `SecurityConfig`, `AuthController`, DTOs, excepciones, `GlobalExceptionHandler`, `CacheConfig`, `WebClientConfig`): ~85% IA (generación inicial), ~15% desarrollador (corrección de `AuthenticationEntryPoint`, handler de `NoResourceFoundException`, ajuste de `application.yml`, refactor de `JwtAuthFilter` a interfaz `UserDetailsService`).
-- **Código Fase 3** (`PlayListService`, `PlayListController`, `SongService`, `SongController`, `SpotifyClient`, `SpotifyTokenClient`, `SpotifyService`, `SpotifyController`, DTOs request/response): ~80% IA (generación inicial), ~20% desarrollador (corrección del bug de eliminación de canciones con `orphanRemoval=true`, extracción de `SpotifyTokenClient` para resolver self-invocation de `@Cacheable`, creación de `SpotifyServiceException` para errores 503 en integración Spotify).
-- **Código Fase 5** (tests `RecommendationControllerTest` + `RecommendationServiceTest`, README.md, corrección `DUPLICATE_RESOURCE`): ~70% IA (generación inicial de los tests), ~30% desarrollador (corrección de `@MockBean` faltantes para `JwtService`/`UserDetailsServiceImpl`, adición del test de lista vacía, adición de `verify(aiRecommendationService, never())`, identificación y corrección de la inconsistencia `DUPLICATE_PLAYLIST` → `DUPLICATE_RESOURCE`).
-- **Código Fase 6** (frontend Vue 3: scaffolding, Axios, Pinia, Vue Router, LoginView, ListsView, ListDetailView): ~75% IA (generación inicial de todas las vistas y configuración), ~25% desarrollador (resolución de dependencia circular axios↔router con importación lazy, corrección de `encodeURIComponent` en rutas y llamadas API, manejo específico de 409/503 en las vistas, estado de error de géneros degradado gracefully cuando Spotify no está disponible, eliminación graceful de canciones eliminadas concurrentemente).
-- **Decisiones de arquitectura finales (D1–D13):** 100% desarrollador; la IA solo presentó opciones y sus justificaciones.
-
-- En Fase 5 (revisión final): `GlobalExceptionHandler` usaba `"DUPLICATE_PLAYLIST"` como código de error para `DuplicatePlaylistException`, pero `DESIGN.md` (sección 10) especifica `"DUPLICATE_RESOURCE"`. Inconsistencia entre el contrato documentado y la implementación. La IA no cruzó la documentación al generar el handler. Corregido en la revisión final.
-- En Fase 6: la IA generó `axios.js` importando el router directamente (`import router from '@/router'`), lo que creó una dependencia circular: `axios.js` → `router/index.js` → `views/*.vue` → `stores/auth.js` → `axios.js`. Vite resuelve el ciclo pero con un warning de módulo no inicializado en hot-reload. Se corrigió con una importación lazy dinámica (`import('@/router').then(...)`) solo en el interceptor de error 401, que es el único lugar donde el router se necesita en tiempo de ejecución.
-- En Fase 6: el campo `genre` del formulario de canciones quedaba inutilizable cuando `GET /spotify/genres` fallaba con 503 (Spotify no configurado). La IA no contempló este estado degradado. Se añadió un mensaje de advertencia (`genresError`) y se permitió al usuario ingresar el género manualmente mediante un campo `<input>` de texto libre cuando el `<select>` no tiene opciones disponibles. *Nota: esta degradación graceful no está en el diseño original — se documenta aquí como decisión tomada durante la implementación.*
