@@ -7,7 +7,7 @@ Instrucciones: Completa esta bitácora mientras resuelves el Módulo de IA. Es u
 
 ---
 
-> **Contexto para el evaluador:** Esta bitácora documenta el Módulo de IA (Ejercicios 1–3), que se desarrolló sobre una base ya construida. Antes de llegar aquí se completaron seis fases de trabajo: Fase 1 (entidades JPA, H2, `schema.sql`/`data.sql`), Fase 2 (JWT + Spring Security), Fase 3 (CRUD de listas y canciones + integración Spotify), Fase 4 (módulo de IA — objeto de este log), Fase 5 (tests unitarios) y Fase 6 (frontend Vue 3). El diseño técnico y el plan de implementación que guiaron cada fase se encuentran en `docs/DESIGN.md` y `docs/IMPLEMENTATION_PLAN.md`. Los prompts de las fases previas se recogen en la sección **Autoría** al final de este documento. Los ejercicios que siguen registran el trabajo específico del módulo de IA tal como ocurrió durante la sesión.
+> **Nota:** El desarrollo se organizó en seis fases dentro de la misma sesión. Los Ejercicios 1–3 documentan la Fase 4 en adelante (módulo de IA, tests y frontend), por eso el primer prompt hace referencia a fases anteriores de la misma sesión. Los prompts de las fases previas y el detalle del diseño están en la sección **Autoría** al final de este documento y en `docs/DESIGN.md` / `docs/IMPLEMENTATION_PLAN.md`.
 
 ---
 
