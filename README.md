@@ -193,25 +193,23 @@ Disponible en `http://localhost:8080/h2-console` durante el desarrollo.
 
 ## Autoría IA
 
-Este proyecto fue desarrollado con asistencia de **GitHub Copilot (Claude Sonnet 4.5)** como parte de una prueba técnica senior. Se documenta el uso de IA con transparencia en `AI-LOG.md`.
+Este proyecto fue desarrollado con asistencia de **GitHub Copilot (Claude Sonnet 4.5)** como parte de una prueba técnica senior. El uso de IA se documenta con detalle en `AI-LOG.md`.
 
-**Resumen de distribución de autoría:**
+La IA se usó como herramienta de generación de código y revisión. Las decisiones de arquitectura, el criterio sobre qué aceptar o rechazar, y la validación del comportamiento real del sistema fueron responsabilidad del desarrollador en todo momento.
 
-| Componente | % IA | % Desarrollador |
-|------------|------|-----------------|
-| Análisis de requisitos | ~70% | ~30% |
-| Documento de diseño (DESIGN.md) | ~75% | ~25% |
-| Plan de implementación | ~90% | ~10% |
-| Código Fases 1–4 (generación inicial) | ~80% | ~20% |
-| Correcciones técnicas aplicadas | 0% | 100% |
-| Decisiones de arquitectura (D1–D13) | 0% | 100% |
+**Lo que decidí yo:**
+- Arquitectura por capas y separación de responsabilidades (D1–D13 en el documento de diseño)
+- Qué requisitos eran explícitos vs. inferencias — la IA los mezclaba
+- Usar `SpotifyTokenClient` separado para resolver el problema de self-invocation con `@Cacheable`
+- Degradación controlada cuando Spotify no está disponible (campo de texto libre en el frontend)
+- Timeout de 10s en Gemini, límite de 20 canciones en el prompt, caché de 30 min — decisiones de resiliencia y costo
 
-**Errores detectados y corregidos manualmente** (documentados en AI-LOG.md):
-- Hash BCrypt incorrecto para `admin123`
-- Bug de `orphanRemoval=true` con `songRepository.delete()` directo
-- Self-invocation de `@Cacheable` en `SpotifyClient` (extraído a `SpotifyTokenClient`)
-- `AuthenticationEntryPoint` faltante en `SecurityConfig` (401 vs 403)
-- Handler de `NoResourceFoundException` en Spring 6.1.x (no extiende `ResponseStatusException`)
-- `JwtAuthFilter` dependiendo de clase concreta en lugar de interfaz
-- `SpotifyServiceException` no creada (errores de Spotify devolvían 500 en vez de 503)
-- `@MockBean` faltante para `JwtService`/`UserDetailsServiceImpl` en `@WebMvcTest`
+**Errores que detecté y corregí** (detallados en `AI-LOG.md`):
+- Hash BCrypt propuesto no correspondía a `admin123` — bug silencioso de autenticación
+- `songRepository.delete(song)` con `orphanRemoval=true` no persistía la eliminación — Hibernate reinsertaba la canción al hacer flush
+- `@Cacheable` en método interno de `SpotifyClient` (self-invocation) — la caché nunca habría funcionado
+- `AuthenticationEntryPoint` faltante en `SecurityConfig` — devolvía 403 en lugar de 401
+- `NoResourceFoundException` en Spring 6.1.x no extiende `ResponseStatusException` — rutas inexistentes devolvían 500
+- `JwtAuthFilter` inyectaba clase concreta en lugar de interfaz `UserDetailsService`
+- `SpotifyServiceException` no creada — errores de Spotify devolvían 500 en lugar de 503
+- `@MockBean` faltante en `@WebMvcTest` — contexto de test no arrancaba por dependencias de `SecurityConfig`
